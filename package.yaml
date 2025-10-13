@@ -1,0 +1,23 @@
+name:                crud-todo
+version:             0.1.0.0
+author:              ishto
+
+executable:
+  main: Main.hs
+  source-dirs: app
+  dependencies:
+     - base >= 4.7 && < 5
+     - scotty
+     - aeson
+     - time
+
+tests:
+  crud-todo-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - crud-todo
