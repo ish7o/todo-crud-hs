@@ -21,7 +21,7 @@ import Database.Persist
 import Database.Persist.Postgresql
 import Database.Persist.TH
 
-import Web.Scotty (scotty, get, post, queryParam, pathParam, param, text, json)
+import Web.Scotty (scotty, queryParam, pathParam, param, text, json)
 import qualified Web.Scotty as S
 
 import qualified Data.Text.Lazy as T
@@ -185,12 +185,25 @@ main = runStdoutLoggingT $ withPostgresqlPool connStr 3 $ \pool -> liftIO $ do
 
         S.put "/api/task/:task_id" $ do
             taskId <- pathParam "task_id" :: S.ActionM Int
-            S.text $ T.pack ("PUT /api/tasks/" ++ show taskId)
+            let taskKey = toSqlKey (fromIntegral taskId) :: Key Task
+            task <- S.jsonData :: S.ActionM Task
+            mExisting <- liftIO $ flip runSqlPersistMPool pool $ get taskKey
+            case mExisting of
+                Nothing -> S.status status404 >> S.text "Task not found"
+                Just t -> do
+                    liftIO $ flip runSqlPersistMPool pool $ replace taskKey task
+                    S.status status200
+                    return ()
 
         S.delete "/api/tasks/:task_id" $ do
             taskId <- pathParam "task_id" :: S.ActionM Int
-            S.text $ T.pack ("DELETE /api/tasks/" ++ show taskId)
-
-
+            let taskKey = toSqlKey (fromIntegral taskId) :: Key Task
+            mExisting <- liftIO $ flip runSqlPersistMPool pool $ get taskKey
+            case mExisting of
+                Nothing -> S.status status404 >> S.text "Task not found"
+                Just t -> do
+                    liftIO $ flip runSqlPersistMPool pool $ delete taskKey
+                    S.status status200
+                    return()
 
 
