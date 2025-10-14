@@ -17,4 +17,5 @@ executable crud-todo-exe
     , persistent-template
     , monad-logger
     , time
+    , text
   default-language: Haskell2010
