@@ -20,25 +20,45 @@ import Data.Time (UTCTime, Day)
 -- import Types (Task(..), TaskStatus(..), TaskPriority(..), TaskUserId, TaskStatus)
 import Types
 
-getTasksForUser :: Int -> SqlPersistM [Entity Task]
-getTasksForUser uid = selectList [TaskUserId ==. uid] []
+class Monad m => TaskRepository m where
+    getTasksForUser :: Int -> m [Entity Task]
+    getTaskById :: Key Task -> m (Maybe Task)
+    insertTask :: Task -> m (Key Task)
+    updateTask :: Key Task -> Task -> m ()
+    completeTask :: Key Task -> m ()
+    deleteTask :: Key Task -> m Bool
 
-getTaskById :: Key Task -> SqlPersistM (Maybe Task)
-getTaskById = get
+instance TaskRepository SqlPersistM where
+    getTasksForUser uid = selectList [TaskUserId ==. uid] []
+    getTaskById = get
+    insertTask = insert
+    updateTask key newTask = replace key newTask
+    completeTask key = update key [TaskStatus =. Completed]
+    deleteTask key = do
+      existing <- get key
+      case existing of
+        Nothing -> return False
+        Just _  -> delete key >> return True
 
-insertTask :: Task -> SqlPersistM (Key Task)
-insertTask = insert
+-- getTasksForUser :: Int -> SqlPersistM [Entity Task]
+-- getTasksForUser uid = selectList [TaskUserId ==. uid] []
 
-updateTask :: Key Task -> Task -> SqlPersistM ()
-updateTask key newTask = replace key newTask
+-- getTaskById :: Key Task -> SqlPersistM (Maybe Task)
+-- getTaskById = get
 
-completeTask :: Key Task -> SqlPersistM ()
-completeTask key = update key [TaskStatus =. Completed]
+-- insertTask :: Task -> SqlPersistM (Key Task)
+-- insertTask = insert
 
-deleteTask :: Key Task -> SqlPersistM Bool
-deleteTask key = do
-  existing <- get key
-  case existing of
-    Nothing -> return False
-    Just _  -> delete key >> return True
+-- updateTask :: Key Task -> Task -> SqlPersistM ()
+-- updateTask key newTask = replace key newTask
+
+-- completeTask :: Key Task -> SqlPersistM ()
+-- completeTask key = update key [TaskStatus =. Completed]
+
+-- deleteTask :: Key Task -> SqlPersistM Bool
+-- deleteTask key = do
+--   existing <- get key
+--   case existing of
+--     Nothing -> return False
+--     Just _  -> delete key >> return True
 

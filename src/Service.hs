@@ -1,5 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Service where
 
@@ -36,25 +38,28 @@ entityToDTO (Entity tid t) = TaskDTO
   , taskPriority  = T.taskPriority t
   }
 
-getTasksForUserService :: Int -> SqlPersistM [TaskDTO]
-getTasksForUserService uid = do
-  tasks <- getTasksForUser uid
-  return $ map entityToDTO tasks
+class TaskRepository m => TaskService m where
+    getTasksForUserService :: Int -> m [TaskDTO]
+    createTaskService :: T.Task -> m Int64
+    completeTaskService :: Int -> m ()
+    updateTaskService ::  Int -> T.Task -> m Bool
+    deleteTaskService ::  Int -> m Bool
 
-createTaskService :: T.Task -> SqlPersistM Int64
-createTaskService task = fromSqlKey <$> insertTask task
+instance TaskService SqlPersistM where
+    getTasksForUserService uid = do
+      tasks <- getTasksForUser uid
+      return $ map entityToDTO tasks
 
-completeTaskService :: Int -> SqlPersistM ()
-completeTaskService tid = completeTask (toSqlKey (fromIntegral tid))
+    createTaskService task = fromSqlKey <$> insertTask task
 
-updateTaskService :: Int -> T.Task -> SqlPersistM Bool
-updateTaskService tid newTask = do
-  let key = toSqlKey (fromIntegral tid)
-  maybeTask <- getTaskById key
-  case maybeTask of
-    Nothing -> return False
-    Just _  -> updateTask key newTask >> return True
+    completeTaskService tid = completeTask (toSqlKey $ fromIntegral tid)
 
-deleteTaskService :: Int -> SqlPersistM Bool
-deleteTaskService tid = deleteTask (toSqlKey $ fromIntegral tid)
+    updateTaskService tid newTask = do
+      let key = toSqlKey (fromIntegral tid)
+      maybeTask <- getTaskById key
+      case maybeTask of
+        Nothing -> return False
+        Just _  -> updateTask key newTask >> return True
+
+    deleteTaskService tid = deleteTask (toSqlKey $ fromIntegral tid)
 
